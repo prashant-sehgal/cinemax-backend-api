@@ -21,11 +21,7 @@ function verifyToken(token: string, secretOrPublicKey: string): Promise<Token> {
   })
 }
 
-function sendAuthTokenResponse(
-  response: Response,
-  user: TypeUser,
-  type = 'api'
-) {
+function sendAuthTokenResponse(response: Response, user: TypeUser) {
   const token = jwt.sign({ uid: user._id }, `${process.env.JWT_SECRET_KEY}`, {
     expiresIn: process.env.JWT_EXPIREN_IN,
   })
@@ -34,23 +30,19 @@ function sendAuthTokenResponse(
   const { fullName, email, _id } = user
   const isProduction = process.env.NODE_ENV === 'production'
 
-  response.cookie('token', token, {
-    expires: new Date((exp ? exp : 1) * 1000),
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
-  })
-
-  if (type === 'api')
-    return response.json({
+  return response
+    .cookie('token', token, {
+      expires: new Date((exp ? exp : 1) * 1000),
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'strict' : 'lax',
+    })
+    .json({
       status: 'success',
       data: {
         user: { _id, fullName, email },
       },
     })
-  else if (type === 'view') {
-    return response.redirect('/admin')
-  }
 }
 
 export const signup = CatchAsync(async function (
@@ -69,36 +61,24 @@ export const signup = CatchAsync(async function (
   return sendAuthTokenResponse(response, user)
 })
 
-export const signin = function (type = 'api') {
-  return CatchAsync(async function (
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ) {
-    const { email, password } = request.body
-    if (!email || !password)
-      return next(new WebError(400, 'please provide email and password'))
-
-    const user = await User.findOne({ email })
-
-    if (!user) return next(new WebError(404, 'no user with this email exists'))
-
-    if (!(await user.isPasswordCorrect(password)))
-      return next(new WebError(400, 'provided email or password is incorrect'))
-
-    return sendAuthTokenResponse(response, user, type)
-  })
-}
-
-function authError(
-  webError: WebError,
+export const signin = CatchAsync(async function (
+  request: Request,
   response: Response,
-  next: NextFunction,
-  type = 'api'
+  next: NextFunction
 ) {
-  if (type === 'api') return next(webError)
-  else if (type === 'view') return response.redirect('/admin/signin')
-}
+  const { email, password } = request.body
+  if (!email || !password)
+    return next(new WebError(400, 'please provide email and password'))
+
+  const user = await User.findOne({ email })
+
+  if (!user) return next(new WebError(404, 'no user with this email exists'))
+
+  if (!(await user.isPasswordCorrect(password)))
+    return next(new WebError(400, 'provided email or password is incorrect'))
+
+  return sendAuthTokenResponse(response, user)
+})
 
 export const authenticate = function (type = 'api') {
   return CatchAsync(async function (
@@ -108,14 +88,11 @@ export const authenticate = function (type = 'api') {
   ) {
     let token: string = request.cookies.token
     if (!token)
-      return authError(
+      return next(
         new WebError(
           401,
           'you are not authenticated, please signin to get access'
-        ),
-        response,
-        next,
-        type
+        )
       )
 
     // verify token
@@ -124,21 +101,15 @@ export const authenticate = function (type = 'api') {
     // check if user still exists
     const freshUser = await User.findById(decode.uid)
     if (!freshUser)
-      return authError(
-        new WebError(401, 'user belongs to this token not exists anymore'),
-        response,
-        next,
-        type
+      return next(
+        new WebError(401, 'user belongs to this token not exists anymore')
       )
 
     // check if user doesn't change password after token is created
 
     if (freshUser.changedPasswordAfter(decode.iat))
-      return authError(
-        new WebError(401, 'user recently changed their password'),
-        response,
-        next,
-        type
+      return next(
+        new WebError(401, 'user belongs to this token not exists anymore')
       )
 
     request.user = freshUser

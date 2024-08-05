@@ -5,7 +5,6 @@ import cookieParser from 'cookie-parser'
 
 import authRouter from './routes/authRoutes'
 import movieRouter from './routes/movieRoutes'
-import viewRouter from './routes/viewRoutes'
 import WebError from './utils/WebError'
 
 const app = express()
@@ -30,7 +29,6 @@ app.set('view engine', 'pug')
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'))
 
 // routes
-app.use('/admin', viewRouter)
 app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/movies', movieRouter)
 
