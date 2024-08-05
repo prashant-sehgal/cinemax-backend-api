@@ -4,6 +4,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 
 import authRouter from './routes/authRoutes'
+import movieRouter from './routes/movieRoutes'
 import WebError from './utils/WebError'
 
 const app = express()
@@ -23,6 +24,7 @@ if (process.env.NODE_ENV === 'development') app.use(morgan('dev'))
 
 // routes
 app.use('/api/v1/auth', authRouter)
+app.use('/api/v1/movies', movieRouter)
 
 // global error handler
 app.use(function (
