@@ -1,0 +1,15 @@
+extends layouts/layout
+
+block content 
+    form.form(action='/admin/signin', method='POST')
+        .form-title 
+            h1 Admin Sign In
+        .form-element 
+            input#emali(type='text', name='email', placeholder="Enter email", required)
+
+        .form-element 
+            input#password(type='password', name='password', placeholder="Enter password", required)
+
+        button(type="submit") Login
+            
+

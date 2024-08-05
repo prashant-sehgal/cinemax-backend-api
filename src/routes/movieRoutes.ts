@@ -6,7 +6,7 @@ import multer from 'multer'
 const router = Router()
 const upload = multer({ storage: movieController.storage })
 
-router.use(authController.authenticate)
+router.use(authController.authenticate())
 router.use(authController.restrictTo('admin'))
 
 router.post(

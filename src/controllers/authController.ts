@@ -21,7 +21,11 @@ function verifyToken(token: string, secretOrPublicKey: string): Promise<Token> {
   })
 }
 
-function sendAuthTokenResponse(response: Response, user: TypeUser) {
+function sendAuthTokenResponse(
+  response: Response,
+  user: TypeUser,
+  type = 'api'
+) {
   const token = jwt.sign({ uid: user._id }, `${process.env.JWT_SECRET_KEY}`, {
     expiresIn: process.env.JWT_EXPIREN_IN,
   })
@@ -30,20 +34,23 @@ function sendAuthTokenResponse(response: Response, user: TypeUser) {
   const { fullName, email, _id } = user
   const isProduction = process.env.NODE_ENV === 'production'
 
-  return response
-    .cookie('token', token, {
-      expires: new Date((exp ? exp : 1) * 1000),
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
-    })
-    .status(200)
-    .json({
+  response.cookie('token', token, {
+    expires: new Date((exp ? exp : 1) * 1000),
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+  })
+
+  if (type === 'api')
+    return response.json({
       status: 'success',
       data: {
         user: { _id, fullName, email },
       },
     })
+  else if (type === 'view') {
+    return response.redirect('/admin')
+  }
 }
 
 export const signup = CatchAsync(async function (
@@ -62,58 +69,83 @@ export const signup = CatchAsync(async function (
   return sendAuthTokenResponse(response, user)
 })
 
-export const signin = CatchAsync(async function (
-  request: Request,
+export const signin = function (type = 'api') {
+  return CatchAsync(async function (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    const { email, password } = request.body
+    if (!email || !password)
+      return next(new WebError(400, 'please provide email and password'))
+
+    const user = await User.findOne({ email })
+
+    if (!user) return next(new WebError(404, 'no user with this email exists'))
+
+    if (!(await user.isPasswordCorrect(password)))
+      return next(new WebError(400, 'provided email or password is incorrect'))
+
+    return sendAuthTokenResponse(response, user, type)
+  })
+}
+
+function authError(
+  webError: WebError,
   response: Response,
-  next: NextFunction
+  next: NextFunction,
+  type = 'api'
 ) {
-  const { email, password } = request.body
-  if (!email || !password)
-    return next(new WebError(400, 'please provide email and password'))
+  if (type === 'api') return next(webError)
+  else if (type === 'view') return response.redirect('/admin/signin')
+}
 
-  const user = await User.findOne({ email })
-
-  if (!user) return next(new WebError(404, 'no user with this email exists'))
-
-  if (!(await user.isPasswordCorrect(password)))
-    return next(new WebError(400, 'provided email or password is incorrect'))
-
-  return sendAuthTokenResponse(response, user)
-})
-
-export const authenticate = CatchAsync(async function (
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
-  let token: string = request.cookies.token
-  if (!token)
-    return next(
-      new WebError(
-        401,
-        'you are not authenticated, please signin to get access'
+export const authenticate = function (type = 'api') {
+  return CatchAsync(async function (
+    request: Request,
+    response: Response,
+    next: NextFunction
+  ) {
+    let token: string = request.cookies.token
+    if (!token)
+      return authError(
+        new WebError(
+          401,
+          'you are not authenticated, please signin to get access'
+        ),
+        response,
+        next,
+        type
       )
-    )
 
-  // verify token
-  const decode = await verifyToken(token, `${process.env.JWT_SECRET_KEY}`)
+    // verify token
+    const decode = await verifyToken(token, `${process.env.JWT_SECRET_KEY}`)
 
-  // check if user still exists
-  const freshUser = await User.findById(decode.uid)
-  if (!freshUser)
-    return next(
-      new WebError(401, 'user belongs to this token not exists anymore')
-    )
+    // check if user still exists
+    const freshUser = await User.findById(decode.uid)
+    if (!freshUser)
+      return authError(
+        new WebError(401, 'user belongs to this token not exists anymore'),
+        response,
+        next,
+        type
+      )
 
-  // check if user doesn't change password after token is created
+    // check if user doesn't change password after token is created
 
-  if (freshUser.changedPasswordAfter(decode.iat))
-    return next(new WebError(401, 'user recently changed their password'))
+    if (freshUser.changedPasswordAfter(decode.iat))
+      return authError(
+        new WebError(401, 'user recently changed their password'),
+        response,
+        next,
+        type
+      )
 
-  request.user = freshUser
+    request.user = freshUser
 
-  return next()
-})
+    return next()
+  })
+}
 
 export const restrictTo = function (...roles: string[]) {
   return function (request: Request, response: Response, next: NextFunction) {

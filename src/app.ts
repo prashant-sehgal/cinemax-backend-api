@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser'
 
 import authRouter from './routes/authRoutes'
 import movieRouter from './routes/movieRoutes'
+import viewRouter from './routes/viewRoutes'
 import WebError from './utils/WebError'
 
 const app = express()
@@ -19,10 +20,17 @@ app.use(cookieParser())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+// serving static files
+app.use(express.static(`${__dirname}/../public`))
+
+// setting up view template as pug
+app.set('view engine', 'pug')
+
 // printing request on to the console in dev mode
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'))
 
 // routes
+app.use('/admin', viewRouter)
 app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/movies', movieRouter)
 
