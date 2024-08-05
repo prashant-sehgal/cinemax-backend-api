@@ -167,7 +167,7 @@ export const resetPassword = CatchAsync(async function (
 
   const user = await User.findOne({ resetPasswordSession })
 
-  if (!user) return next(new WebError(404, 'no user found with this token'))
+  if (!user) return next(new WebError(404, 'session not found'))
 
   const webError = await user.validateAndResetPassword(
     newPassword,

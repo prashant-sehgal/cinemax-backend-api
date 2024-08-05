@@ -116,7 +116,7 @@ userSchema.methods.validateAndResetPassword = async function (
   const sessionExpiresInTimestamp = this.resetPasswordSessionExpiresIn.getTime()
 
   if (sessionExpiresInTimestamp < Date.now())
-    return new WebError(400, 'token has already expired')
+    return new WebError(400, 'session has already expired')
 
   this.password = newPassword
   this.confirmPassword = confirmNewPassword
