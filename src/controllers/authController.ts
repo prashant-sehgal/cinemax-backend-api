@@ -147,7 +147,6 @@ export const forgotPassword = CatchAsync(async function (
 
   return response.status(200).json({
     status: 'success',
-    tok: resetPasswordSession,
     message: 'Reset password link has been sent to your email',
   })
 })
