@@ -10,6 +10,7 @@ interface TypeMovie extends mongoose.Document {
   createdBy: string[]
   genres: string[]
   poster: string
+  file: string
   createdAt: Date
 }
 
@@ -49,6 +50,10 @@ const movieSchema = new mongoose.Schema<TypeMovie>({
   poster: {
     type: String,
     required: [true, 'movie must have a poster'],
+  },
+  file: {
+    type: String,
+    required: [true, 'movie must have a movie file'],
   },
   createdAt: {
     type: Date,

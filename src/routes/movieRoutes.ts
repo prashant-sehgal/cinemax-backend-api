@@ -9,10 +9,11 @@ const upload = multer({ storage: movieController.storage })
 router.use(authController.authenticate)
 router.use(authController.restrictTo('admin'))
 
-router.post('/', upload.single('poster'), (req, res) => {
-  res.json({
-    body: req.body,
-  })
-})
+router.post(
+  '/',
+  upload.single('poster'),
+  movieController.upload, // uploading poster to cloud
+  movieController.createMovie
+)
 
 export default router
