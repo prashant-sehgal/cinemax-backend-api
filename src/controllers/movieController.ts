@@ -2,7 +2,7 @@ import { BlobServiceClient } from '@azure/storage-blob'
 import { readFile, unlink } from 'node:fs/promises'
 import Movie from '../models/movieModel'
 import multer from 'multer'
-import { createOne } from '../utils/RESTHandlers'
+import { createOne, getAll, getOne } from '../utils/RESTHandlers'
 import { NextFunction, Request, Response } from 'express'
 import CatchAsync from '../utils/CatchAsync'
 
@@ -57,5 +57,6 @@ export const upload = CatchAsync(async function (
   next()
 })
 
-// create one movie handler
 export const createMovie = createOne(Movie)
+export const getAllMovies = getAll(Movie)
+export const getMovie = getOne(Movie)

@@ -27,7 +27,7 @@ export const getOne = (Model: any) =>
     response: Response,
     next: NextFunction
   ) {
-    const document = await Model.findById(request.query.id)
+    const document = await Model.findById(request.params.id)
 
     if (!document)
       return next(new WebError(404, 'no document exists with that id'))
